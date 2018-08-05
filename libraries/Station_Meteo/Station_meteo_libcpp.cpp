@@ -1,10 +1,8 @@
 #include <Streaming.h>
-
-#include <Streaming.h>
-
-#include <Streaming.h>
 #include <DS3232RTC.h>
 #include <Arduino.h>
+
+
 
 // function to return the compile date and time as a time_t value
 time_t compileTime()
@@ -54,12 +52,11 @@ void RTC_Alarm_1_1m5s ()
 }
 
 //enclenchement de l'alarme 1 de la RTC toute les heures à 05 min et 2 secondes
-void RTC_Alarm1_test ()
+void RTC_Alarm1_Hours()
 {
-    // set Alarm 1 to occur at 5 seconds after 2 minutes
+    // set Alarm 1 to occur at 5 minuts all hours
     //RTC.setAlarm(ALM1_MATCH_HOURS,0, 47,0,1); = nok
-
-    RTC.setAlarm(ALM1_MATCH_MINUTES,2, 05,0,1);//=ça pete 1 fois toute les heures
+    RTC.setAlarm(ALM1_MATCH_MINUTES,2, 05,0,1);
     // clear the alarm flag
     RTC.alarm(ALARM_1); 
 }

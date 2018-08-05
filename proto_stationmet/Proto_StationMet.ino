@@ -1,112 +1,219 @@
 /*
-*effectue mesure de T°, 
-*stocké en Eeprom
-*lue et affiche lors de affichage de l'heure quand l'alarme sonne toute les minutes
+*proto du module emetteur
+*effectue mesure de T° et d'humidité de l'air et du sol,
+*stocke les données en Eeprom
+*lie et affiche toutes les heures/minutes sur terminal rs232
+*liste des branchements hard :
+*pin2 : int rtc
+*
+*reste : 
+*emission radio
+*define suivant hard
+*define radio
+*
 */
+#include <VirtualWire.h>
+//#include <VirtualWire_Config.h>
 #include <Streaming.h>
 #include <DS3232RTC.h>
 #include <avr/sleep.h>
 #include <DHT12.h>
 #include <EEPROMex.h>
 #include <EEPROMVar.h>
-#include <Station_meteo.h>
-
+#include <Station_meteo_libh.h>
 // Set dht12 i2c comunication on default Wire pin
 DHT12 dht12;
+// sélection de la pin de mesure du capteur d'humidité de sol
+int sensorPin = A0; 
+ // utile pour debug
+const int LED1 = 13;
+
+//compteur message radio
+int comptMsgRadio;
 
 void setup()
 {
 	Serial.begin(112560);
 	// Start sensor handshake
 	dht12.begin();
-
+	//start RTC
 	initializeRTC();
-    // set the RTC time and date to the compile time
-    //RTC.set(compileTime());   
+	//start radio
+	vw_set_ptt_inverted(true); // Required for DR3100
+	vw_setup(2000);
+	vw_rx_start();       // Start the receiver PLL running
+	comptMsgRadio=0;
 
-    void RTC_Alarm1_2m5s();
-    
-
-    Serial << millis() << " Start ";
-    printDateTime(RTC.get());
-    Serial << endl;
+	/*debbug*/
+	Serial << millis() << " Start ";
+	printDateTime(RTC.get());
+	Serial << endl;
 }
-int timeSinceLastRead = 0;
 
 void loop()
 {
-	// Report every 30 seconds.
-	if(timeSinceLastRead > 30000) {
-	// Reading temperature or humidity takes about 250 milliseconds!
-		// Read temperature as Celsius (the default)
-		float t12 = dht12.readTemperature();
-		// Read temperature as Fahrenheit (isFahrenheit = true)
-		float f12 = dht12.readTemperature(true);
-		// Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
-		float h12 = dht12.readHumidity();
+	uint8_t buf[VW_MAX_MESSAGE_LEN];
+    uint8_t buflen = VW_MAX_MESSAGE_LEN;
 
-		bool dht12Read = true;
-		// Check if any reads failed and exit early (to try again).
-		if (isnan(h12) || isnan(t12) || isnan(f12)) {
-		  Serial.println("Failed to read from DHT12 sensor!");
+	int humiditeSolMoy = 0;
+	int humiditeSolEEP = 0;
 
-		  dht12Read = false;
-		}
+	struct MesureMeteo
+	{
+	int *tempAir;
+	float *humiditeSol;
+	float *humiditeAir;	
+	};
 
-		if (dht12Read){
-		EEPROM.updateFloat( 0, t12);
-		EEPROM.updateFloat( 4, f12);
-		EEPROM.updateFloat( 8, h12);
-		}
-		timeSinceLastRead = 0;
+	struct MsgRadioHoraire
+	{
+	char *ffdebut;
+	int *refReseau;
+	int *refModuleRadio;
+	int *typeMsg;
+	int *CRC;
+	struct MesureMeteo;
+	char *ffend;
+	};
+
+	// parametrage interruption
+	attachInterrupt(digitalPinToInterrupt(2), reveil, LOW);
+	pinMode(digitalPinToInterrupt(2), INPUT_PULLUP);
+	// enclenchement de l'interruption lors de l'alarme
+	RTC.alarmInterrupt(ALARM_1, true); // enclenchement de l'interruption lors de l'alarme
+	//commenter / decommenter l'alarme choisie
+	//RTC_Alarm1_Hours ();
+	RTC_Alarm_1_1m5s();
+
+	/*mesure des capteurs */
+	// mesure de l'humidité du sol moyenne de 20 mesures *20µs = 2s
+	for (int i = 0; i < 20; ++i)
+	{
+		humiditeSolMoy += analogRead(sensorPin);
+		delay(20);
 	}
-	delay(500);
-	timeSinceLastRead += 500;
+	// calcul de la moyenne
+	humiditeSolEEP=(humiditeSolMoy/20); 
 
-	RTC.alarmInterrupt(ALARM_1, true); // enclenchement de l'interruption lors de l'alarme?
-	if ( RTC.alarm(ALARM_1) )    // check alarm flag, clear it if set
-    {
-        Serial << millis() << " ALARM_1 ";
-        printDateTime(RTC.get());
-        // Compute heat index in Fahrenheit (the default)
-		//float hif12 = dht12.computeHeatIndex(f12, h12);
-		// Compute heat index in Celsius (isFahreheit = false)
-		//float hic12 = dht12.computeHeatIndex(t12, h12, false);
-		// Compute dew point in Fahrenheit (the default)
-		//float dpf12 = dht12.dewPoint(f12, h12);
-		// Compute dew point in Celsius (isFahreheit = false)
-		//float dpc12 = dht12.dewPoint(t12, h12, false);
-        float eept12 = EEPROM.readFloat(0);
-		float eepf12 = EEPROM.readFloat(4);
+	// Read temperature as Celsius (the default)
+	int t12 = dht12.readTemperature();
+	// Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
+	int h12 = dht12.readHumidity();
+	bool dht12Read = true;
+	// Check if any reads failed and exit early (to try again).
+	if (isnan(h12) || isnan(t12))
+	{
+		Serial.println("Failed to read from DHT12 sensor!");
+		dht12Read = false;
+	}
+	if (dht12Read)
+	{
+		EEPROM.updateInt(0, t12);
+		EEPROM.updateInt(4, h12);
+		EEPROM.updateInt(8, humiditeSolEEP);
+	}
+	/*fin des mesures */
+
+	/*mise en mode sommeil*/
+
+/*	// choix du mode sleep
+	set_sleep_mode(SLEEP_MODE_PWR_DOWN); 
+	// autorisation de mise en sommeil
+	sleep_enable(); 
+	// mise en veille
+	sleep_mode(); 
+*/
+	/* sortie du mode sommeil */
+	// first thing after waking from sleep:
+	//detachInterrupt(digitalPinToInterrupt(2));
+	//sleep_disable();
+
+	/* emission radio */
+	// affichage des données en memoire
+	//if (RTC.alarm(ALARM_1))
+		// check alarm flag, clear it if set
+	{
+		//debbug
+		/*Serial << millis() << " ALARM_1 ";
+		printDateTime(RTC.get());
+		float eept12 = EEPROM.readFloat(0);
 		float eeph12 = EEPROM.readFloat(8);
+		int eepghs = EEPROM.readInt(16);
 		Serial.print("\tDHT12=> Humidity: ");
 		Serial.print(eeph12);
 		Serial.print(" %\t");
 		Serial.print("Temperature: ");
 		Serial.print(eept12);
-		Serial.print(" *C ");
-		Serial.print(eepf12);
-		Serial.print(" *F\t");
-		// Serial.print("  Heat index: ");
-		// Serial.print(hic12);
-		// Serial.print(" *C ");
-		// Serial.print(hif12);
-		// Serial.print(" *F");
-		// Serial.print("  Dew point: ");
-		// Serial.print(dpc12);
-		// Serial.print(" *C ");
-		// Serial.print(dpf12);
-		// Serial.println(" *F");
-        Serial << endl;
-    }
-    if ( RTC.alarm(ALARM_2) )    // check alarm flag, clear it if set
+		Serial.print(" °C ");
+		Serial.print("humidité du sol : ");
+		Serial.print(eepghs);
+		Serial << endl;*/
+		
+		//lecture des mesures en EEprom
+		MesureMeteo mesureHoraire;
+		mesureHoraire.humiditeSol=EEPROM.readInt(8);
+		mesureHoraire.humiditeAir=EEPROM.readInt(4);
+		mesureHoraire.tempAir=EEPROM.readInt(0);
+		Serial.print(EEPROM.readInt(0));
+		Serial.print(EEPROM.readInt(4));
+		Serial.print(EEPROM.readInt(8));
+
+		//creation du msg radio
+		MsgRadioHoraire MsgRadioHoraireToSend;
+		MsgRadioHoraireToSend.ffdebut='ff';
+		MsgRadioHoraireToSend.refReseau=1;
+		MsgRadioHoraireToSend.refModuleRadio=1;
+		MsgRadioHoraireToSend.typeMsg=1;
+		MsgRadioHoraireToSend.CRC=4;
+		MsgRadioHoraireToSend.MesureMeteo=MesureHoraire.humiditeAir;
+		MsgRadioHoraireToSend.ffend='ff';
+
+		
+		/*emission radio*/
+		//emission d'un message radio 1/heure
+		digitalWrite(13, true); // Flash a light to show transmitting
+		//envoi d'une trame
+		comptMsgRadio+=1;
+		vw_send((byte *) &comptMsgRadio, sizeof(comptMsgRadio)); // On envoie le message
+    	vw_wait_tx(); // Wait until the whole message is gone
+    	delay(200);
+    	
+  		vw_send((byte *) &MsgRadioHoraireToSend, sizeof(MsgRadioHoraireToSend));
+	    vw_wait_tx(); // Wait until the whole message is gone
+	    
+
+    	// Wait at most 200ms for a reply
+    if (vw_wait_rx_max(200))
     {
-        Serial << millis() << " ALARM_2 ";
-        printDateTime(RTC.get());
-        Serial << endl;
-    }        
+	if (vw_get_message(buf, &buflen)) // Non-blocking
+	{
+	    int i;
+	    
+	    // Message with a good checksum received, dump it.
+	    Serial.print("Got: ");
+	    
+	    for (i = 0; i < buflen; i++)
+	    {
+		Serial.print(buf[i], HEX);
+		Serial.print(" ");
+	    }
+	    Serial.println("");
+	    Serial.println("Sent");
+	    digitalWrite(13, false);
+	    delay(200);
+	}
+    }
+    else
+	Serial.println("Timout");
+	}
 }
 
 
-
-
+/*interruption*/
+void reveil()
+{
+	/*debbug*/
+	digitalWrite(LED1, HIGH); 
+	delay(20);
+	digitalWrite(LED1, LOW); 
+}

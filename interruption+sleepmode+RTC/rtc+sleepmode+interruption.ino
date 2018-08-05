@@ -56,8 +56,8 @@ void loop()
 {
     
 
-    attachInterrupt(digitalPinToInterrupt(2), affichage, LOW);//parametrage interruption
-    pinMode(digitalPinToInterrupt(2), INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(0), affichage, LOW);//parametrage interruption
+    pinMode(digitalPinToInterrupt(0), INPUT_PULLUP);
 
     RTC.alarmInterrupt(ALARM_1, true); // enclenchement de l'interruption lors de l'alarme?
 
@@ -69,7 +69,7 @@ void loop()
     sleep_mode();//mise en veille
 
     // first thing after waking from sleep: 
-    detachInterrupt(digitalPinToInterrupt(2));
+    detachInterrupt(digitalPinToInterrupt(0));
 
     sleep_disable();         
 

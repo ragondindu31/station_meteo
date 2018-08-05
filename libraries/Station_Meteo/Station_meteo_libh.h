@@ -28,7 +28,7 @@ void initializeRTC ();
 void RTC_Alarm_1_1m5s ();
 
 //enclenchement de l'alarme 1 de la RTC toute les ?
-void RTC_Alarm1_test ();
+void RTC_Alarm1_Hours ();
 
 //fonction 
 void printDateTime(time_t t);
