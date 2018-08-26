@@ -8,9 +8,9 @@
 ecran:
 RS :9
 E : 10
-D4 : 5
+D4 : 3
 D5 : 4
-D6 : 3
+D6 : 5
 D7 : 6
 
 dht12:
@@ -30,7 +30,7 @@ GND
 */
 volatile bool interruption =0;
 int bouton=0;//test pour appui
-
+int CMD5V = 12;
 int sensorPin = A0; // sélection de la pin de mesure du capteur d'humidité de sol
 int sensorValue = 0; // initialisation de la valeur du capteur
 int seuil_alerte = 300; // valeur du seuil à partir duquel l'alerte est donnée
@@ -39,15 +39,15 @@ int NbreAppuis=0; //variable pour modifer l'affichage
 // Set dht12 i2c comunication on default Wire pin
 DHT12 dht12;
 
-LiquidCrystal monEcran(9,10,5,4,3,6); // on crée l'objet écran11,12 >9,8
+LiquidCrystal monEcran(9,10,3,4,5,6); // on crée l'objet écran11,12 >9,8
 
 /*fonction effectuer pendant interruption (appui sur bouton) */ 		
-
 void appuiBouton (void) {
 	
 	interruption = HIGH;
 }
 
+/*mise en sommeil*/
 void sleepNow (){
 	set_sleep_mode(SLEEP_MODE_PWR_DOWN);//choix du mode sleep
 	sleep_enable();//autorisation de mise en sommeil
@@ -58,8 +58,9 @@ void sleepNow (){
 	detachInterrupt(bouton);	
 }
 
+/*mesure et affichage de la temprature et de l'humidité de l'air*/
 void ReadWriteTempeHeAir (){
-/*mesure et affichage de la temprature et de l'humidité*/
+
 
     // Reading temperature or humidity takes about 250 milliseconds!
 	// Read temperature as Celsius (the default)
@@ -95,6 +96,7 @@ void ReadWriteTempeHeAir (){
 	}
 }
 
+/*mesure et affichage de l'humidité du sol*/
 void ReadWriteHeSol (){
 	//lecture de l'H°Sol
 	sensorValue = analogRead(sensorPin); // lecture directe de la valeur
@@ -105,6 +107,7 @@ void ReadWriteHeSol (){
 	monEcran.print(sensorValue);
 }
 
+/*gestion de l'affichage*/
 void affichage() {
 	/*
 	apres le premier appui sur bouton affichage des données T° et humidité de l'air (H°Air)
@@ -136,11 +139,15 @@ void setup() {
 	// Start sensor handshake
 	dht12.begin();
 	
+	pinMode(CMD5V, OUTPUT);
 }
 
 
 void loop() {
 	//activation des interruptions pour detection de appuis sur BP
+	digitalWrite(CMD5V, LOW);
+
+	
 	pinMode(bouton, INPUT_PULLUP);
 	attachInterrupt(bouton, appuiBouton , FALLING);//parametrage interruption
 	delay (50);
@@ -150,10 +157,14 @@ void loop() {
 	}
 
 	if (NbreAppuis!= 0) {
+		digitalWrite(CMD5V, HIGH);
+		delay (200);
 		affichage();
 	}
+
 	delay (2000);
 	monEcran.clear();
+	digitalWrite(CMD5V, LOW);
 	sleepNow(); 
 }
 
