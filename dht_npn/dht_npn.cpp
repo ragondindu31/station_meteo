@@ -1,5 +1,4 @@
 #include <DS3232RTC.h>
-
 #include <Arduino.h>
 #include <LiquidCrystal.h> // on importe la bibliothèque
 #include <DHT12.h>
@@ -52,7 +51,9 @@ void appuiBouton (void) {
 
 /*mise en sommeil*/
 void sleepNow (){
-	
+
+
+	 
 	set_sleep_mode(SLEEP_MODE_PWR_DOWN);//choix du mode sleep
 	sleep_enable();//autorisation de mise en sommeil
 	attachInterrupt(bouton, appuiBouton , FALLING);//parametrage interruption
@@ -64,7 +65,7 @@ void sleepNow (){
 
 /*mesure et affichage de la temperature et de l'humidité de l'air*/
 void ReadWriteTempeHeAir (){
-	//activation com I2C
+	//tentative reactivation I2C
 	Wire.begin();
 	delay(90);
 
@@ -81,6 +82,7 @@ void ReadWriteTempeHeAir (){
 	{
 		monEcran.clear(); // on efface l'écran
 		monEcran.print("Failed to read from DHT12 sensor!");
+
 		dht12Read = false;
 	}
 
@@ -99,13 +101,15 @@ void ReadWriteTempeHeAir (){
     	monEcran.print(".");
     	monEcran.print((int)((float)(h12 - (int)h12) * 10)); // affiche temperature
 	}
-
-	//mise en veille des pin 
+		//putain de pin A4 et A5 à oV
+	
 	pinMode(A5,OUTPUT);
 	pinMode(A4,OUTPUT);
 
 	digitalWrite(A5,LOW);
 	digitalWrite(A4,LOW);
+
+	// fin de test
 	
 }
 
@@ -132,7 +136,8 @@ void affichage() {
 			ReadWriteTempeHeAir();
 			break;
 		case 2 :
-			ReadWriteHeSol();
+			//ReadWriteHeSol();
+			ReadWriteTempeHeAir();
 			NbreAppuis= 0;
 			break;
 		default :
@@ -159,32 +164,10 @@ void setup() {
 void loop() {
 	//activation des interruptions pour detection de appuis sur BP
 	digitalWrite(CMD5V, LOW);
-
 	
 	pinMode(bouton, INPUT_PULLUP);
 	attachInterrupt(bouton, appuiBouton , FALLING);//parametrage interruption
-	
-	//mise en veille des pin com I2C
-	pinMode(A5,OUTPUT);
-	pinMode(A4,OUTPUT);
-	digitalWrite(A5,LOW);
-	digitalWrite(A4,LOW);
-
-	//mise en veille des pin com ecran
-	pinMode(3,OUTPUT);
-	pinMode(4,OUTPUT);
-	pinMode(5,OUTPUT);
-	pinMode(6,OUTPUT);
-	pinMode(9,OUTPUT);
-	pinMode(10,OUTPUT);
-
-	digitalWrite(3,LOW);
-	digitalWrite(4,LOW);
-	digitalWrite(5,LOW);
-	digitalWrite(6,LOW);
-	digitalWrite(9,LOW);
-	digitalWrite(10,LOW);
-
+	delay (50);
 
 	if (interruption!=0) {
 		NbreAppuis++;
@@ -192,7 +175,7 @@ void loop() {
 
 	if (NbreAppuis!= 0) {
 		digitalWrite(CMD5V, HIGH);
-		delay (500);
+		delay (200);
 		affichage();
 	}
 

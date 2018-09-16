@@ -66,7 +66,9 @@ void loop()
 		}
 		timeSinceLastRead = 0;
 	}
+	Wire.endTransmission();
 	delay(100);
 	timeSinceLastRead += 100;
+
 
 }

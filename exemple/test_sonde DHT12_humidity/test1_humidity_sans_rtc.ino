@@ -1,15 +1,16 @@
+#include <DHT12.h>
+
+#include <EEPROMex.h>
+#include <EEPROMVar.h>
+
+
+
 /*
 *effectue mesure de T°, 
 *stocké en Eeprom
 *lue et affiche lors de affichage de l'heure quand l'alarme sonne toute les minutes
 */
-#include <Streaming.h>
-#include <DS3232RTC.h>
-#include <avr/sleep.h>
-#include <DHT12.h>
-#include <EEPROMex.h>
-#include <EEPROMVar.h>
-#include <Station_meteo_libh.h>
+
 
 
 // Set dht12 i2c comunication on default Wire pin
@@ -22,19 +23,6 @@ void setup()
 	// Start sensor handshake
 	dht12.begin();
 
-	// initializeRTC();
- //    // set the RTC time and date to the compile time
- //    //RTC.set(compileTime());   
-
-	
- //    RTC_Alarm1_test ();
- //    //RTC.setAlarm(ALM1_MATCH_MINUTES,0,20,1);
- //    // clear the alarm flag
- //    RTC.alarm(ALARM_1);
-
- //    Serial << millis() << " Start ";
- //    printDateTime(RTC.get());
- //    Serial << endl;
 }
 
 
@@ -65,9 +53,7 @@ void loop()
 		}
 		
 
-	// RTC.alarmInterrupt(ALARM_1, true); // enclenchement de l'interruption lors de l'alarme?
-	// if ( RTC.alarm(ALARM_1) )    // check alarm flag, clear it if set
- //    {
+
         Serial << millis() << " ALARM_1 ";
         printDateTime(RTC.get());
         float eept12 = EEPROM.readFloat(0);
@@ -79,13 +65,7 @@ void loop()
 		Serial.print(eept12);
 		Serial.print(" *C ");
         Serial << endl;
-    // }
-    // if ( RTC.alarm(ALARM_2) )    // check alarm flag, clear it if set
-    // {
-    //     Serial << millis() << " ALARM_2 ";
-    //     printDateTime(RTC.get());
-    //     Serial << endl;
-    // }        
+       
 }
 
 
