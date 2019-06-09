@@ -26,7 +26,7 @@ DHT12 dht12;
 // sélection de la pin de mesure du capteur d'humidité de sol
 int sensorPin = A0; 
  // utile pour debug
-const int LED1 = 13;
+const int LED1 = 13;// a changer utiliser par radio
 
 //compteur message radio
 int comptMsgRadio;

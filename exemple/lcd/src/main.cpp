@@ -1,3 +1,5 @@
+#include <MirfHardwareSpi85Driver.h>
+
 #include <Arduino.h>
 #include <LiquidCrystal.h> // on importe la bibliothèque
 #include <SPI.h>
@@ -13,7 +15,7 @@ D5 : 4
 D6 : 3
 D7 : 2
 */
-LiquidCrystal monEcran(9,10,5,4,3,2); // on crée l'objet écran11,12 >9,8
+LiquidCrystal monEcran(9,10,7,4,5,6); // on crée l'objet écran11,12 >9,8
 
 int octetReception=0; // variable de stockage des valeurs reçues sur le port Série (ASCII)
 char caractereRecu=0; // variable pour stockage caractère recu

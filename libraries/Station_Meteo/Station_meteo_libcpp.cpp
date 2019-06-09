@@ -1,6 +1,9 @@
+#include <Arduino.h>
+#include <Station_meteo_lib.h>
+#include <LiquidCrystal.h>
+#include <DHT12.h>
 #include <Streaming.h>
 #include <DS3232RTC.h>
-#include <Arduino.h>
 
 
 
@@ -72,3 +75,126 @@ void printDateTime(time_t t)
     Serial << ((second(t)<10) ? "0" : "") << _DEC(second(t));
 }
 
+
+//Lecture de l'humidité du sol
+void ReadHeSol (){
+    //lecture de l'H°Sol
+    HSol = analogRead(sensorPin); // lecture directe de la valeur
+}
+
+// lecture de la temperature et de l'humidité de l'air
+void ReadTempeHeAir (){
+    //activation com I2C
+    Wire.begin();
+    delay(90);
+
+    // Reading temperature or humidity takes about 250 milliseconds!
+    // Read temperature as Celsius (the default)
+    t12 = dht12.readTemperature();
+    
+    // Sensor readings may also be up to 2 seconds 'old' (its a very slow sensor)
+    h12 = dht12.readHumidity();
+
+    bool dht12Read = true;
+    // Check if any reads failed and exit early (to try again).
+    if (isnan(h12) || isnan(t12) )
+    {
+        monEcran.clear(); // on efface l'écran
+        monEcran.print("Failed to read from DHT12 sensor!");
+        dht12Read = false;
+    }
+
+    //mise en veille des pin 
+    // pinMode(A5,OUTPUT);
+    // pinMode(A4,OUTPUT);
+
+    // digitalWrite(A5,LOW);
+    // digitalWrite(A4,LOW);
+}
+
+//affichage de l'heure et de la date sur écran LCD
+void printTime() { 
+
+    static time_t t = RTC.get();    
+    tmElements_t tm;
+    RTC.read(tm);
+    //printDateTime(t);
+    monEcran.clear();
+    monEcran.print(tm.Day);        
+    monEcran.print("/"); 
+    monEcran.print(tm.Month);        
+    monEcran.print("/");
+    monEcran.print(tm.Year-30);
+    monEcran.print(" ");
+    monEcran.setCursor(0,1);
+    monEcran.print(tm.Hour);        
+    monEcran.print(":");        
+    monEcran.print(tm.Minute);
+    monEcran.print(":");
+    monEcran.print(tm.Second);
+    delay (200);
+}
+
+//affichage sur ecran LCD de la température de l'air et de l'humidté de l'air
+void WriteTempeHeAir (){
+    monEcran.clear();   
+    monEcran.setCursor(0,0);
+    monEcran.print("temp: ");
+    monEcran.print(int(t12));
+    monEcran.print(".");
+    monEcran.print((int)((float)(t12 - (int)t12) * 10)); // affiche temperature
+
+    monEcran.setCursor(0,1);
+    monEcran.print("humidite : ");
+    monEcran.print(int (h12));
+    monEcran.print(".");
+    monEcran.print((int)((float)(h12 - (int)h12) * 10)); // affiche temperature
+    delay (500);
+}
+
+//affichage sur ecran LCD de l'humidité du sol
+void WriteHeSol (){
+    monEcran.clear();   
+    monEcran.setCursor(0,0);
+    monEcran.print("humidite du sol : ");
+    monEcran.setCursor(0,1);
+    monEcran.print(HSol);
+}
+
+//affichage nombre de mesure effctue et temps actuel
+void WriteNbreMesureTime (){
+    monEcran.clear();
+    monEcran.print("nombre de mesure : ");
+    monEcran.setCursor(0,1);
+    monEcran.print(nombredemesure);
+    delay (500);
+    
+    printTime();
+}
+
+/*gestion de l'affichage*/
+void affichage() {
+    /*
+    apres le premier appui sur bouton affichage des données T° et humidité de l'air (H°Air)
+    2° appui : affichage Humidité du Sol (H°Sol)
+    */
+    switch (NbreAppuis) {
+        
+        case 1 :
+            WriteTempeHeAir();
+            break;
+
+        case 2 :
+            WriteHeSol();
+            delay (2000);
+            NbreAppuis= 0;
+            break;
+
+        default :
+            monEcran.clear();
+            monEcran.setCursor(0,0);
+            monEcran.print("probleme");
+            delay (2000);
+            break;
+    }
+}

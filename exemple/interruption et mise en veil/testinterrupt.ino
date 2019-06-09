@@ -18,10 +18,8 @@ void loop()
 
 	attachInterrupt(digitalPinToInterrupt(2), affichage, LOW);//parametrage interruption
 
-
 	sleep_enable();//autorisation de mise en sommeil
 
-	
 	Serial.print("endormons nous !\n");//message de debug
 	delay(500);
 	sleep_mode();//mise en veille
@@ -30,8 +28,6 @@ void loop()
 	detachInterrupt(digitalPinToInterrupt(2));
 
   	sleep_disable();         
-	
-
 
 	Serial.print("je suis reveillé\n");
   	delay(500);  

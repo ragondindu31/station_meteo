@@ -1,6 +1,6 @@
 /*allumer une LED.*/
 
-const int L1 = 7;
+const int L1 = 8;
 void setup()
 {
 	 pinMode(L1, OUTPUT);
